@@ -1,10 +1,11 @@
 {
   "name": "imes-aurora-postgres-store",
   "description": "Aurora Postgres store for Imes",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": ["dist"],
   "scripts": {
     "build": "npm run clean && tsc",
     "clean": "rimraf dist/*",
