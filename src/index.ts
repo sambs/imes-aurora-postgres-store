@@ -1,5 +1,5 @@
 import { Item, ItemKey, Query, QueryableStore, QueryResult } from 'imes'
-import { RDSDataService } from 'aws-sdk'
+import * as RDSDataService from 'aws-sdk/clients/rdsdataservice'
 
 export interface AuroraPostgresStoreOptions<
   _I extends Item<any, any, any>,

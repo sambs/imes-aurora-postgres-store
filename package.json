@@ -3,33 +3,28 @@
   "description": "Aurora Postgres store for Imes",
   "version": "0.0.0",
   "license": "MIT",
-  "main": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "npm run clean && tsc",
     "clean": "rimraf dist/*",
     "prepublish": "npm run build",
     "prettify": "prettier --write 'src/**/*.ts'",
-    "test": "tape -r ts-node/register test/**/*.ts",
-    "test-w": "onchange -i 'src/**/*.ts' -- yarn test"
+    "test": "jest"
   },
   "dependencies": {
+    "aws-sdk": "^2.706.0",
     "imes": "^0.7.0"
   },
   "devDependencies": {
-    "@types/deep-equal": "^1.0.1",
+    "@types/jest": "^26.0.3",
     "@types/node": "^12.7.4",
-    "@types/tape": "^4.2.33",
     "husky": "^4.2.5",
+    "jest": "^26.1.0",
     "lint-staged": "^10.2.11",
     "prettier": "^2.0.5",
     "rimraf": "^3.0.0",
-    "source-map-support": "^0.5.13",
-    "tape": "^5.0.1",
-    "ts-node": "^8.6.2",
+    "ts-jest": "^26.1.1",
     "typescript": "^3.5.3"
-  },
-  "peerDependencies": {
-    "aws-sdk": "^2.706.0"
   }
 }

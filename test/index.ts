@@ -1,13 +1,19 @@
-import test from 'tape'
+import * as RDSDataService from 'aws-sdk/clients/rdsdataservice'
 import { OrdFilter, EqualFilter, PrefixFilter, Query } from 'imes'
 import { AuroraPostgresStore } from '../src'
 
+jest.mock('aws-sdk/clients/rdsdataservice')
+
 const store = new AuroraPostgresStore<User, UserQuery>({
-  clusterArn: process.env.CLUSTER_ARN!,
-  secretArn: process.env.SECRET_ARN!,
+  clusterArn: 'cluster-123',
+  secretArn: 'secret-123',
   table: 'events',
-  database: 'tutorial',
+  database: 'product',
 })
+
+const mockedRdsClient: jest.Mocked<RDSDataService> = store.client as jest.Mocked<
+  RDSDataService
+>
 
 interface UserData {
   name: string
@@ -42,18 +48,68 @@ const user: User = {
   key: 'u1',
 }
 
-test('AuroraStore read and write', async t => {
+test('AuroraPostgresStore#write', async () => {
+  mockedRdsClient.executeStatement = jest.fn(() => ({
+    promise: jest.fn().mockResolvedValue({ records: [] }),
+  })) as any
+
   await store.write(user)
 
-  t.pass('writes without erroring')
+  expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
+    resourceArn: 'cluster-123',
+    secretArn: 'secret-123',
+    database: 'product',
+    sql: `
+  INSERT INTO events (id, item)
+  VALUES(:id, :item::jsonb)
+  ON CONFLICT (id) DO UPDATE SET item = :item::jsonb
+`,
+    parameters: [
+      {
+        name: 'id',
+        value: {
+          stringValue: 'u1',
+        },
+      },
+      {
+        name: 'item',
+        value: {
+          stringValue: JSON.stringify(user),
+        },
+      },
+    ],
+  })
+})
 
-  t.equal(
-    await store.read('dne'),
-    undefined,
-    'returns undefined when asked for a non-existant key'
-  )
+test('AuroraPostgresStore#read', async () => {
+  const executeStatementResponse: RDSDataService.ExecuteStatementResponse = {
+    records: [[{ stringValue: JSON.stringify(user) }]],
+  }
 
-  t.deepEqual(await store.read('u1'), user, 'returns a stored item')
+  mockedRdsClient.executeStatement = jest.fn(() => ({
+    promise: jest.fn().mockResolvedValue(executeStatementResponse),
+  })) as any
 
-  t.end()
+  expect(await store.read('u1')).toEqual(user)
+
+  expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
+    resourceArn: 'cluster-123',
+    secretArn: 'secret-123',
+    database: 'product',
+    sql: `SELECT item FROM events WHERE id = :id`,
+    parameters: [
+      {
+        name: 'id',
+        value: {
+          stringValue: 'u1',
+        },
+      },
+    ],
+  })
+
+  mockedRdsClient.executeStatement = jest.fn(() => ({
+    promise: jest.fn().mockResolvedValue({ records: [] }),
+  })) as any
+
+  expect(await store.read('dne')).toBeUndefined()
 })
