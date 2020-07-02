@@ -2,7 +2,7 @@ import { Item, ItemKey, Query, QueryableStore, QueryResult } from 'imes'
 import * as RDSDataService from 'aws-sdk/clients/rdsdataservice'
 
 export interface AuroraPostgresStoreOptions<
-  _I extends Item<any, any, any>,
+  _I extends Item<any, any, string>,
   _Q
 > {
   client?: RDSDataService
@@ -72,10 +72,50 @@ export class AuroraPostgresStore<
       .promise()
   }
 
-  async find(_query: Q): Promise<QueryResult<I>> {
+  async find(query: Q): Promise<QueryResult<I>> {
+    const hasLimit = typeof query.limit == 'number'
+    let sql = `SELECT id,item FROM ${this.table}`
+    let where: string[] = []
+    let parameters: RDSDataService.SqlParametersList = []
+
+    if (query.cursor) {
+      where = [...where, 'id > :id']
+      parameters = [
+        ...parameters,
+        { name: 'id', value: { stringValue: query.cursor } },
+      ]
+    }
+
+    if (where.length) {
+      sql = `${sql} WHERE ${where.join(' AND ')}`
+    }
+
+    if (hasLimit) {
+      sql = `${sql} LIMIT ${query.limit! + 1}`
+    }
+
+    let { records = [] } = await this.client
+      .executeStatement({
+        sql,
+        parameters,
+        resourceArn: this.clusterArn,
+        secretArn: this.secretArn,
+        database: this.database,
+      })
+      .promise()
+
+    const cursor =
+      hasLimit && records.length > query.limit!
+        ? records[query.limit! - 1][0].stringValue!
+        : null
+
+    if (hasLimit) {
+      records = records.slice(0, query.limit!)
+    }
+
     return {
-      items: [],
-      cursor: null,
+      cursor: cursor as ItemKey<I>,
+      items: records.map(([_id, { stringValue }]) => JSON.parse(stringValue!)),
     }
   }
 }
