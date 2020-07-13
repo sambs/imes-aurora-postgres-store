@@ -72,19 +72,18 @@ const user3: User = {
   key: 'u3',
 }
 
-test('AuroraPostgresStore#write', async () => {
+test('AuroraPostgresStore#create', async () => {
   mockedRdsClient.executeStatement = jest.fn(() => ({
     promise: jest.fn().mockResolvedValue({ records: [] }),
   })) as any
 
-  await store.write(user1)
+  await store.create(user1)
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
     sql: `
   INSERT INTO users (id, item)
   VALUES(:id, :item::jsonb)
-  ON CONFLICT (id) DO UPDATE SET item = :item::jsonb
 `,
     parameters: [
       {
@@ -103,7 +102,38 @@ test('AuroraPostgresStore#write', async () => {
   })
 })
 
-test('AuroraPostgresStore#read', async () => {
+test('AuroraPostgresStore#update', async () => {
+  mockedRdsClient.executeStatement = jest.fn(() => ({
+    promise: jest.fn().mockResolvedValue({ records: [] }),
+  })) as any
+
+  await store.update(user1)
+
+  expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
+    ...commonQueryParams,
+    sql: `
+  UPDATE users
+  SET item = :item::jsonb
+  WHERE id = :id
+`,
+    parameters: [
+      {
+        name: 'id',
+        value: {
+          stringValue: 'u1',
+        },
+      },
+      {
+        name: 'item',
+        value: {
+          stringValue: JSON.stringify(user1),
+        },
+      },
+    ],
+  })
+})
+
+test('AuroraPostgresStore#get', async () => {
   const executeStatementResponse: RDSDataService.ExecuteStatementResponse = {
     records: [[{ stringValue: JSON.stringify(user1) }]],
   }
@@ -112,7 +142,7 @@ test('AuroraPostgresStore#read', async () => {
     promise: jest.fn().mockResolvedValue(executeStatementResponse),
   })) as any
 
-  expect(await store.read('u1')).toEqual(user1)
+  expect(await store.get('u1')).toEqual(user1)
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
@@ -131,7 +161,7 @@ test('AuroraPostgresStore#read', async () => {
     promise: jest.fn().mockResolvedValue({ records: [] }),
   })) as any
 
-  expect(await store.read('dne')).toBeUndefined()
+  expect(await store.get('dne')).toBeUndefined()
 })
 
 test('AuroraPostgresStore#find', async () => {

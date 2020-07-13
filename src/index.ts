@@ -36,7 +36,7 @@ export class AuroraPostgresStore<
     this.table = table
   }
 
-  async read(key: ItemKey<I>): Promise<I | undefined> {
+  async get(key: ItemKey<I>): Promise<I | undefined> {
     const result = await this.client
       .executeStatement({
         sql: `SELECT item FROM ${this.table} WHERE id = :id`,
@@ -53,13 +53,31 @@ export class AuroraPostgresStore<
     }
   }
 
-  async write(item: I): Promise<void> {
+  async create(item: I): Promise<void> {
     await this.client
       .executeStatement({
         sql: `
   INSERT INTO ${this.table} (id, item)
   VALUES(:id, :item::jsonb)
-  ON CONFLICT (id) DO UPDATE SET item = :item::jsonb
+`,
+        parameters: [
+          { name: 'id', value: { stringValue: item.key } },
+          { name: 'item', value: { stringValue: JSON.stringify(item) } },
+        ],
+        resourceArn: this.clusterArn,
+        secretArn: this.secretArn,
+        database: this.database,
+      })
+      .promise()
+  }
+
+  async update(item: I): Promise<void> {
+    await this.client
+      .executeStatement({
+        sql: `
+  UPDATE ${this.table}
+  SET item = :item::jsonb
+  WHERE id = :id
 `,
         parameters: [
           { name: 'id', value: { stringValue: item.key } },
