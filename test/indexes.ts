@@ -1,6 +1,6 @@
 import * as RDSDataService from 'aws-sdk/clients/rdsdataservice'
 import { OrdFilter, EqualFilter, PrefixFilter, Query } from 'imes'
-import { AuroraPostgresStore } from '../src'
+import { AuroraPostgresStore, AuroraPostgresStringIndex } from '../src'
 
 jest.mock('aws-sdk/clients/rdsdataservice')
 
@@ -9,6 +9,9 @@ const store = new AuroraPostgresStore<User, UserQuery>({
   secretArn: 'secret-123',
   table: 'users',
   database: 'product',
+  indexes: [
+    new AuroraPostgresStringIndex('name', (user: User) => user.data.name),
+  ],
 })
 
 const mockedRdsClient: jest.Mocked<RDSDataService> = store.client as jest.Mocked<
@@ -82,8 +85,8 @@ test('AuroraPostgresStore#create', async () => {
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
     sql: `
-  INSERT INTO users (id, item)
-  VALUES(:id, :item::jsonb)
+  INSERT INTO users (id, item, name)
+  VALUES(:id, :item::jsonb, :name)
 `,
     parameters: [
       {
@@ -96,6 +99,12 @@ test('AuroraPostgresStore#create', async () => {
         name: 'item',
         value: {
           stringValue: JSON.stringify(user1),
+        },
+      },
+      {
+        name: 'name',
+        value: {
+          stringValue: 'Trevor',
         },
       },
     ],
@@ -113,7 +122,7 @@ test('AuroraPostgresStore#update', async () => {
     ...commonQueryParams,
     sql: `
   UPDATE users
-  SET item = :item::jsonb
+  SET item = :item::jsonb, name = :name
   WHERE id = :id
 `,
     parameters: [
@@ -127,6 +136,12 @@ test('AuroraPostgresStore#update', async () => {
         name: 'item',
         value: {
           stringValue: JSON.stringify(user1),
+        },
+      },
+      {
+        name: 'name',
+        value: {
+          stringValue: 'Trevor',
         },
       },
     ],

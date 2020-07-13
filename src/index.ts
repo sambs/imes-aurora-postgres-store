@@ -1,6 +1,32 @@
 import { Item, ItemKey, Query, QueryableStore, QueryResult } from 'imes'
 import * as RDSDataService from 'aws-sdk/clients/rdsdataservice'
 
+export abstract class AuroraPostgresIndex<
+  I extends Item<any, any, any>,
+  N extends string,
+  T
+> {
+  name: N
+  getValue: (item: I) => T
+
+  constructor(name: N, getValue: (item: I) => T) {
+    this.name = name
+    this.getValue = getValue
+  }
+
+  abstract toParameter(value: I): RDSDataService.SqlParametersList[number]
+}
+
+export class AuroraPostgresStringIndex<
+  I extends Item<any, any, any>,
+  N extends string
+> extends AuroraPostgresIndex<I, N, string> {
+  toParameter(item: I) {
+    const value = this.getValue(item)
+    return { name: this.name, value: { stringValue: value } }
+  }
+}
+
 export interface AuroraPostgresStoreOptions<
   _I extends Item<any, any, string>,
   _Q
@@ -10,6 +36,7 @@ export interface AuroraPostgresStoreOptions<
   database: string
   secretArn: string
   table: string
+  indexes?: AuroraPostgresIndex<any, any, any>[]
 }
 
 export class AuroraPostgresStore<
@@ -21,6 +48,7 @@ export class AuroraPostgresStore<
   database: string
   secretArn: string
   table: string
+  indexes: AuroraPostgresIndex<any, any, any>[]
 
   constructor({
     client,
@@ -28,12 +56,14 @@ export class AuroraPostgresStore<
     database,
     table,
     secretArn,
+    indexes = [],
   }: AuroraPostgresStoreOptions<I, Q>) {
     this.client = client || new RDSDataService()
     this.clusterArn = clusterArn
     this.database = database
     this.secretArn = secretArn
     this.table = table
+    this.indexes = indexes
   }
 
   async get(key: ItemKey<I>): Promise<I | undefined> {
@@ -54,16 +84,26 @@ export class AuroraPostgresStore<
   }
 
   async create(item: I): Promise<void> {
+    let fields = ['id', 'item']
+    let values = [':id, :item::jsonb']
+    let parameters: RDSDataService.SqlParametersList = [
+      { name: 'id', value: { stringValue: item.key } },
+      { name: 'item', value: { stringValue: JSON.stringify(item) } },
+    ]
+
+    for (const index of this.indexes) {
+      fields.push(index.name)
+      values.push(`:${index.name}`)
+      parameters.push(index.toParameter(item))
+    }
+
     await this.client
       .executeStatement({
         sql: `
-  INSERT INTO ${this.table} (id, item)
-  VALUES(:id, :item::jsonb)
+  INSERT INTO ${this.table} (${fields.join(', ')})
+  VALUES(${values.join(', ')})
 `,
-        parameters: [
-          { name: 'id', value: { stringValue: item.key } },
-          { name: 'item', value: { stringValue: JSON.stringify(item) } },
-        ],
+        parameters,
         resourceArn: this.clusterArn,
         secretArn: this.secretArn,
         database: this.database,
@@ -72,17 +112,25 @@ export class AuroraPostgresStore<
   }
 
   async update(item: I): Promise<void> {
+    let set = ['item = :item::jsonb']
+    let parameters: RDSDataService.SqlParametersList = [
+      { name: 'id', value: { stringValue: item.key } },
+      { name: 'item', value: { stringValue: JSON.stringify(item) } },
+    ]
+
+    for (const index of this.indexes) {
+      set.push(`${index.name} = :${index.name}`)
+      parameters.push(index.toParameter(item))
+    }
+
     await this.client
       .executeStatement({
         sql: `
   UPDATE ${this.table}
-  SET item = :item::jsonb
+  SET ${set.join(', ')}
   WHERE id = :id
 `,
-        parameters: [
-          { name: 'id', value: { stringValue: item.key } },
-          { name: 'item', value: { stringValue: JSON.stringify(item) } },
-        ],
+        parameters,
         resourceArn: this.clusterArn,
         secretArn: this.secretArn,
         database: this.database,
