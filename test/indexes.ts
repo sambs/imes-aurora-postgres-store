@@ -1,17 +1,16 @@
 import * as RDSDataService from 'aws-sdk/clients/rdsdataservice'
-import { OrdFilter, EqualFilter, PrefixFilter, Query } from 'imes'
 import { AuroraPostgresStore, AuroraPostgresStringIndex } from '../src'
 
 jest.mock('aws-sdk/clients/rdsdataservice')
 
-const store = new AuroraPostgresStore<User, UserQuery>({
+const store = new AuroraPostgresStore({
   clusterArn: 'cluster-123',
   secretArn: 'secret-123',
   table: 'users',
   database: 'product',
-  indexes: [
-    new AuroraPostgresStringIndex('name', (user: User) => user.data.name),
-  ],
+  indexes: {
+    name: new AuroraPostgresStringIndex((user: User) => user.data.name),
+  },
 })
 
 const mockedRdsClient: jest.Mocked<RDSDataService> = store.client as jest.Mocked<
@@ -39,13 +38,6 @@ interface User {
   data: UserData
   meta: UserMeta
   key: UserKey
-}
-
-interface UserQuery extends Query<User> {
-  filter?: {
-    name?: EqualFilter<string> & PrefixFilter
-    age?: OrdFilter<number>
-  }
 }
 
 const user1: User = {
@@ -179,81 +171,28 @@ test('AuroraPostgresStore#get', async () => {
   expect(await store.get('dne')).toBeUndefined()
 })
 
-test('AuroraPostgresStore#find', async () => {
+test('AuroraPostgresStore#find with filter', async () => {
   const executeStatementResponse: RDSDataService.ExecuteStatementResponse = {
-    records: [
-      [{ stringValue: 'u1' }, { stringValue: JSON.stringify(user1) }],
-      [{ stringValue: 'u2' }, { stringValue: JSON.stringify(user2) }],
-      [{ stringValue: 'u3' }, { stringValue: JSON.stringify(user3) }],
-    ],
+    records: [[{ stringValue: 'u3' }, { stringValue: JSON.stringify(user3) }]],
   }
 
   mockedRdsClient.executeStatement = jest.fn(() => ({
     promise: jest.fn().mockResolvedValue(executeStatementResponse),
   })) as any
 
-  expect(await store.find({})).toEqual({
+  expect(await store.find({ filter: { name: { eq: 'Eternal' } } })).toEqual({
     cursor: null,
-    items: [user1, user2, user3],
+    items: [user3],
   })
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT id,item FROM users`,
-    parameters: [],
-  })
-})
-
-test('AuroraPostgresStore#find with limit', async () => {
-  const executeStatementResponse: RDSDataService.ExecuteStatementResponse = {
-    records: [
-      [{ stringValue: 'u1' }, { stringValue: JSON.stringify(user1) }],
-      [{ stringValue: 'u2' }, { stringValue: JSON.stringify(user2) }],
-      [{ stringValue: 'u3' }, { stringValue: JSON.stringify(user3) }],
-    ],
-  }
-
-  mockedRdsClient.executeStatement = jest.fn(() => ({
-    promise: jest.fn().mockResolvedValue(executeStatementResponse),
-  })) as any
-
-  expect(await store.find({ limit: 2 })).toEqual({
-    cursor: 'u2',
-    items: [user1, user2],
-  })
-
-  expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
-    ...commonQueryParams,
-    sql: `SELECT id,item FROM users LIMIT 3`,
-    parameters: [],
-  })
-})
-
-test('AuroraPostgresStore#find with limit and cursor', async () => {
-  const executeStatementResponse: RDSDataService.ExecuteStatementResponse = {
-    records: [
-      [{ stringValue: 'u2' }, { stringValue: JSON.stringify(user2) }],
-      [{ stringValue: 'u3' }, { stringValue: JSON.stringify(user3) }],
-    ],
-  }
-
-  mockedRdsClient.executeStatement = jest.fn(() => ({
-    promise: jest.fn().mockResolvedValue(executeStatementResponse),
-  })) as any
-
-  expect(await store.find({ cursor: 'u1', limit: 2 })).toEqual({
-    cursor: null,
-    items: [user2, user3],
-  })
-
-  expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
-    ...commonQueryParams,
-    sql: `SELECT id,item FROM users WHERE id > :id LIMIT 3`,
+    sql: `SELECT id,item FROM users WHERE name = :name ORDER BY id`,
     parameters: [
       {
-        name: 'id',
+        name: 'name',
         value: {
-          stringValue: 'u1',
+          stringValue: 'Eternal',
         },
       },
     ],

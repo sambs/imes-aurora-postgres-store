@@ -1,14 +1,14 @@
 import * as RDSDataService from 'aws-sdk/clients/rdsdataservice'
-import { Query } from 'imes'
 import { AuroraPostgresStore } from '../src'
 
 jest.mock('aws-sdk/clients/rdsdataservice')
 
-const store = new AuroraPostgresStore<User, UserQuery>({
+const store = new AuroraPostgresStore<User, {}>({
   clusterArn: 'cluster-123',
   secretArn: 'secret-123',
   table: 'users',
   database: 'product',
+  indexes: {},
 })
 
 const mockedRdsClient: jest.Mocked<RDSDataService> = store.client as jest.Mocked<
@@ -37,8 +37,6 @@ interface User {
   meta: UserMeta
   key: UserKey
 }
-
-interface UserQuery extends Query<User> {}
 
 const user1: User = {
   data: {
@@ -179,7 +177,7 @@ test('AuroraPostgresStore#find', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT id,item FROM users`,
+    sql: `SELECT id,item FROM users ORDER BY id`,
     parameters: [],
   })
 })
@@ -204,7 +202,7 @@ test('AuroraPostgresStore#find with limit', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT id,item FROM users LIMIT 3`,
+    sql: `SELECT id,item FROM users ORDER BY id LIMIT 3`,
     parameters: [],
   })
 })
@@ -228,7 +226,7 @@ test('AuroraPostgresStore#find with limit and cursor', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT id,item FROM users WHERE id > :id LIMIT 3`,
+    sql: `SELECT id,item FROM users WHERE id > :id ORDER BY id LIMIT 3`,
     parameters: [
       {
         name: 'id',
