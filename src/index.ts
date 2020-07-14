@@ -16,18 +16,21 @@ export abstract class AuroraPostgresIndex<
   T,
   F extends Filter
 > {
-  getValue: (item: I) => T
+  valueFromItem: (item: I) => T
+  parameterValue: (value: T) => RDSDataService.Field
 
-  constructor(getValue: (item: I) => T) {
-    this.getValue = getValue
+  constructor(
+    parameterValue: (value: T) => RDSDataService.Field,
+    valueFromItem: (item: I) => T
+  ) {
+    this.parameterValue = parameterValue
+    this.valueFromItem = valueFromItem
   }
 
   parameterFromItem(name: string, item: I): RDSDataService.SqlParameter {
-    const value = this.getValue(item)
+    const value = this.valueFromItem(item)
     return { name: name, value: this.parameterValue(value) }
   }
-
-  abstract parameterValue(value: T): RDSDataService.Field
 
   abstract createParams(
     name: string,
@@ -55,13 +58,10 @@ export abstract class AuroraPostgresIndex<
   }
 }
 
-export class AuroraPostgresStringIndex<
-  I extends Item<any, any, any>
-> extends AuroraPostgresIndex<I, string, EqualFilter<string>> {
-  parameterValue(value: string) {
-    return { stringValue: value }
-  }
-
+export class AuroraPostgresEqualIndex<
+  I extends Item<any, any, any>,
+  T
+> extends AuroraPostgresIndex<I, T, EqualFilter<T>> {
   createParams(name: string, item: I) {
     return {
       fields: [name],
@@ -77,7 +77,7 @@ export class AuroraPostgresStringIndex<
     }
   }
 
-  filterParams(name: string, filter: EqualFilter<string>) {
+  filterParams(name: string, filter: EqualFilter<T>) {
     const where: string[] = []
     const parameters: RDSDataService.SqlParametersList = []
 
@@ -101,6 +101,29 @@ export class AuroraPostgresStringIndex<
 
     return { where, parameters }
   }
+}
+
+export const auroraStringValue = (value: string): RDSDataService.Field => ({
+  stringValue: value,
+})
+
+export const auroraLongValue = (value: number): RDSDataService.Field => ({
+  longValue: value,
+})
+
+export const auroraDoubleValue = (value: number): RDSDataService.Field => ({
+  doubleValue: value,
+})
+
+export const auroraBooleanValue = (value: boolean): RDSDataService.Field => ({
+  booleanValue: value,
+})
+
+export const auroraNullable = <T>(
+  higher: (value: T) => RDSDataService.Field
+) => (value: T | null) => {
+  if (value === null) return { isNull: true }
+  else return higher(value)
 }
 
 type AuroraPostgresIndexes<

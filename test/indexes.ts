@@ -1,6 +1,13 @@
 import * as RDSDataService from 'aws-sdk/clients/rdsdataservice'
-import { EqualFilter, EnumFilter, Query } from 'imes'
-import { AuroraPostgresStore, AuroraPostgresStringIndex } from '../src'
+import { EqualFilter, OrdFilter, Query } from 'imes'
+
+import {
+  AuroraPostgresStore,
+  AuroraPostgresEqualIndex,
+  auroraLongValue,
+  auroraNullable,
+  auroraStringValue,
+} from '../src'
 
 jest.mock('aws-sdk/clients/rdsdataservice')
 
@@ -29,7 +36,8 @@ interface User {
 
 export interface UserQuery extends Query<User> {
   filter?: {
-    name?: EqualFilter<string> & EnumFilter<string>
+    name?: EqualFilter<string>
+    age?: OrdFilter<number>
   }
 }
 
@@ -39,7 +47,14 @@ const store = new AuroraPostgresStore<User, UserQuery>({
   table: 'users',
   database: 'product',
   indexes: {
-    name: new AuroraPostgresStringIndex((user: User) => user.data.name),
+    name: new AuroraPostgresEqualIndex(
+      auroraStringValue,
+      (user: User) => user.data.name
+    ),
+    age: new AuroraPostgresEqualIndex(
+      auroraNullable(auroraLongValue),
+      (user: User) => user.data.age
+    ),
   },
 })
 
@@ -84,8 +99,8 @@ test('AuroraPostgresStore#create', async () => {
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
     sql: `
-  INSERT INTO users (id, item, name)
-  VALUES(:id, :item::jsonb, :name)
+  INSERT INTO users (id, item, name, age)
+  VALUES(:id, :item::jsonb, :name, :age)
 `,
     parameters: [
       {
@@ -106,6 +121,54 @@ test('AuroraPostgresStore#create', async () => {
           stringValue: 'Trevor',
         },
       },
+      {
+        name: 'age',
+        value: {
+          longValue: 47,
+        },
+      },
+    ],
+  })
+})
+
+test('AuroraPostgresStore#create with a null value', async () => {
+  mockedRdsClient.executeStatement = jest.fn(() => ({
+    promise: jest.fn().mockResolvedValue({ records: [] }),
+  })) as any
+
+  await store.create(user3)
+
+  expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
+    ...commonQueryParams,
+    sql: `
+  INSERT INTO users (id, item, name, age)
+  VALUES(:id, :item::jsonb, :name, :age)
+`,
+    parameters: [
+      {
+        name: 'id',
+        value: {
+          stringValue: 'u3',
+        },
+      },
+      {
+        name: 'item',
+        value: {
+          stringValue: JSON.stringify(user3),
+        },
+      },
+      {
+        name: 'name',
+        value: {
+          stringValue: 'Eternal',
+        },
+      },
+      {
+        name: 'age',
+        value: {
+          isNull: true,
+        },
+      },
     ],
   })
 })
@@ -121,7 +184,7 @@ test('AuroraPostgresStore#update', async () => {
     ...commonQueryParams,
     sql: `
   UPDATE users
-  SET item = :item::jsonb, name = :name
+  SET item = :item::jsonb, name = :name, age = :age
   WHERE id = :id
 `,
     parameters: [
@@ -141,6 +204,12 @@ test('AuroraPostgresStore#update', async () => {
         name: 'name',
         value: {
           stringValue: 'Trevor',
+        },
+      },
+      {
+        name: 'age',
+        value: {
+          longValue: 47,
         },
       },
     ],
