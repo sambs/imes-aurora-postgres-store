@@ -1,21 +1,8 @@
 import * as RDSDataService from 'aws-sdk/clients/rdsdataservice'
+import { EqualFilter, EnumFilter, Query } from 'imes'
 import { AuroraPostgresStore, AuroraPostgresStringIndex } from '../src'
 
 jest.mock('aws-sdk/clients/rdsdataservice')
-
-const store = new AuroraPostgresStore({
-  clusterArn: 'cluster-123',
-  secretArn: 'secret-123',
-  table: 'users',
-  database: 'product',
-  indexes: {
-    name: new AuroraPostgresStringIndex((user: User) => user.data.name),
-  },
-})
-
-const mockedRdsClient: jest.Mocked<RDSDataService> = store.client as jest.Mocked<
-  RDSDataService
->
 
 const commonQueryParams = {
   resourceArn: 'cluster-123',
@@ -39,6 +26,26 @@ interface User {
   meta: UserMeta
   key: UserKey
 }
+
+export interface UserQuery extends Query<User> {
+  filter?: {
+    name?: EqualFilter<string> & EnumFilter<string>
+  }
+}
+
+const store = new AuroraPostgresStore<User, UserQuery>({
+  clusterArn: 'cluster-123',
+  secretArn: 'secret-123',
+  table: 'users',
+  database: 'product',
+  indexes: {
+    name: new AuroraPostgresStringIndex((user: User) => user.data.name),
+  },
+})
+
+const mockedRdsClient: jest.Mocked<RDSDataService> = store.client as jest.Mocked<
+  RDSDataService
+>
 
 const user1: User = {
   data: {
@@ -187,10 +194,10 @@ test('AuroraPostgresStore#find with filter', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT id,item FROM users WHERE name = :name ORDER BY id`,
+    sql: `SELECT id,item FROM users WHERE name = :name__eq ORDER BY id`,
     parameters: [
       {
-        name: 'name',
+        name: 'name__eq',
         value: {
           stringValue: 'Eternal',
         },
