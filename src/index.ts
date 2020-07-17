@@ -310,7 +310,29 @@ export class AuroraPostgresStore<
     }
   }
 
-  async clear(): Promise<void> {
+  async setup() {
+    await this.client
+      .executeStatement({
+        sql: `CREATE TABLE ${this.table} (id varchar(64) PRIMARY KEY, item jsonb)`,
+        resourceArn: this.clusterArn,
+        secretArn: this.secretArn,
+        database: this.database,
+      })
+      .promise()
+  }
+
+  async teardown() {
+    await this.client
+      .executeStatement({
+        sql: `DROP TABLE ${this.table}`,
+        resourceArn: this.clusterArn,
+        secretArn: this.secretArn,
+        database: this.database,
+      })
+      .promise()
+  }
+
+  async clear() {
     await this.client
       .executeStatement({
         sql: `DELETE FROM ${this.table}`,
