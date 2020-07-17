@@ -309,4 +309,15 @@ export class AuroraPostgresStore<
       items: records.map(([_id, { stringValue }]) => JSON.parse(stringValue!)),
     }
   }
+
+  async clear(): Promise<void> {
+    await this.client
+      .executeStatement({
+        sql: `DELETE FROM ${this.table}`,
+        resourceArn: this.clusterArn,
+        secretArn: this.secretArn,
+        database: this.database,
+      })
+      .promise()
+  }
 }
