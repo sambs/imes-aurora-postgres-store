@@ -1,9 +1,9 @@
 import * as RDSDataService from 'aws-sdk/clients/rdsdataservice'
-import { EqualFilter, OrdFilter, Query } from 'imes'
+import { ExactFilter, OrdFilter, Query } from 'imes'
 
 import {
   AuroraPostgresStore,
-  AuroraPostgresEqualIndex,
+  AuroraPostgresExactIndex,
   auroraLongValue,
   auroraNullable,
   auroraStringValue,
@@ -36,7 +36,7 @@ interface User {
 
 export interface UserQuery extends Query<User> {
   filter?: {
-    name?: EqualFilter<string>
+    name?: ExactFilter<string>
     age?: OrdFilter<number>
   }
 }
@@ -47,11 +47,11 @@ const store = new AuroraPostgresStore<User, UserQuery>({
   table: 'users',
   database: 'product',
   indexes: {
-    name: new AuroraPostgresEqualIndex(
+    name: new AuroraPostgresExactIndex(
       auroraStringValue,
       (user: User) => user.data.name
     ),
-    age: new AuroraPostgresEqualIndex(
+    age: new AuroraPostgresExactIndex(
       auroraNullable(auroraLongValue),
       (user: User) => user.data.age
     ),
@@ -247,7 +247,7 @@ test('AuroraPostgresStore#get', async () => {
   expect(await store.get('dne')).toBeUndefined()
 })
 
-test('AuroraPostgresStore#find with filter', async () => {
+test('AuroraPostgresStore#find with eq filter', async () => {
   const executeStatementResponse: RDSDataService.ExecuteStatementResponse = {
     records: [[{ stringValue: 'u3' }, { stringValue: JSON.stringify(user3) }]],
   }
@@ -269,6 +269,42 @@ test('AuroraPostgresStore#find with filter', async () => {
         name: 'name__eq',
         value: {
           stringValue: 'Eternal',
+        },
+      },
+    ],
+  })
+})
+
+test('AuroraPostgresStore#find with in filter', async () => {
+  const executeStatementResponse: RDSDataService.ExecuteStatementResponse = {
+    records: [[{ stringValue: 'u3' }, { stringValue: JSON.stringify(user3) }]],
+  }
+
+  mockedRdsClient.executeStatement = jest.fn(() => ({
+    promise: jest.fn().mockResolvedValue(executeStatementResponse),
+  })) as any
+
+  expect(
+    await store.find({ filter: { name: { in: ['Eternal', 'Sunshine'] } } })
+  ).toEqual({
+    cursor: null,
+    items: [user3],
+  })
+
+  expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
+    ...commonQueryParams,
+    sql: `SELECT id,item FROM users WHERE name IN (:name__in_0, :name__in_1) ORDER BY id`,
+    parameters: [
+      {
+        name: 'name__in_0',
+        value: {
+          stringValue: 'Eternal',
+        },
+      },
+      {
+        name: 'name__in_1',
+        value: {
+          stringValue: 'Sunshine',
         },
       },
     ],

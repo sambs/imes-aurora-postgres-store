@@ -5,9 +5,7 @@
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "npm run clean && tsc",
     "clean": "rimraf dist/*",
@@ -17,7 +15,7 @@
   },
   "dependencies": {
     "aws-sdk": "^2.706.0",
-    "imes": "^0.9.0"
+    "imes": "^0.10.0"
   },
   "devDependencies": {
     "@types/jest": "^26.0.3",

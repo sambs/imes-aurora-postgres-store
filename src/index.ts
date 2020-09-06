@@ -1,7 +1,7 @@
 import * as RDSDataService from 'aws-sdk/clients/rdsdataservice'
 
 import {
-  EqualFilter,
+  ExactFilter,
   Item,
   ItemKey,
   Query,
@@ -58,10 +58,10 @@ export abstract class AuroraPostgresIndex<
   }
 }
 
-export class AuroraPostgresEqualIndex<
+export class AuroraPostgresExactIndex<
   I extends Item<any, any, any>,
   T
-> extends AuroraPostgresIndex<I, T, EqualFilter<T>> {
+> extends AuroraPostgresIndex<I, T, ExactFilter<T>> {
   createParams(name: string, item: I) {
     return {
       fields: [name],
@@ -77,11 +77,11 @@ export class AuroraPostgresEqualIndex<
     }
   }
 
-  filterParams(name: string, filter: EqualFilter<T>) {
+  filterParams(name: string, filter: ExactFilter<T>) {
     const where: string[] = []
     const parameters: RDSDataService.SqlParametersList = []
 
-    if (filter.eq) {
+    if (filter.eq !== undefined) {
       const paramName = `${name}__eq`
       where.push(`${name} = :${paramName}`)
       parameters.push({
@@ -90,13 +90,30 @@ export class AuroraPostgresEqualIndex<
       })
     }
 
-    if (filter.ne) {
+    if (filter.ne !== undefined) {
       const paramName = `${name}__ne`
       where.push(`${name} = :${paramName}`)
       parameters.push({
         name: paramName,
         value: this.parameterValue(filter.ne),
       })
+    }
+
+    if (filter.in !== undefined) {
+      // Aurora data api does not currently support array parameters
+      // but we can add items individually
+      const paramNames: string[] = []
+
+      filter.in.forEach((value, index) => {
+        const paramName = `${name}__in_${index}`
+        paramNames.push(paramName)
+        parameters.push({
+          name: paramName,
+          value: this.parameterValue(value),
+        })
+      })
+
+      where.push(`${name} IN (:${paramNames.join(', :')})`)
     }
 
     return { where, parameters }
