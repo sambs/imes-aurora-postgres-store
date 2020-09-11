@@ -92,7 +92,7 @@ export class AuroraPostgresExactIndex<
 
     if (filter.ne !== undefined) {
       const paramName = `${name}__ne`
-      where.push(`${name} = :${paramName}`)
+      where.push(`${name} <> :${paramName}`)
       parameters.push({
         name: paramName,
         value: this.parameterValue(filter.ne),

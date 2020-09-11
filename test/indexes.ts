@@ -275,6 +275,37 @@ test('AuroraPostgresStore#find with eq filter', async () => {
   })
 })
 
+test('AuroraPostgresStore#find with ne filter', async () => {
+  const executeStatementResponse: RDSDataService.ExecuteStatementResponse = {
+    records: [
+      [{ stringValue: 'u1' }, { stringValue: JSON.stringify(user1) }],
+      [{ stringValue: 'u2' }, { stringValue: JSON.stringify(user2) }],
+    ],
+  }
+
+  mockedRdsClient.executeStatement = jest.fn(() => ({
+    promise: jest.fn().mockResolvedValue(executeStatementResponse),
+  })) as any
+
+  expect(await store.find({ filter: { name: { ne: 'Eternal' } } })).toEqual({
+    cursor: null,
+    items: [user1, user2],
+  })
+
+  expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
+    ...commonQueryParams,
+    sql: `SELECT id,item FROM users WHERE name <> :name__ne ORDER BY id`,
+    parameters: [
+      {
+        name: 'name__ne',
+        value: {
+          stringValue: 'Eternal',
+        },
+      },
+    ],
+  })
+})
+
 test('AuroraPostgresStore#find with in filter', async () => {
   const executeStatementResponse: RDSDataService.ExecuteStatementResponse = {
     records: [[{ stringValue: 'u3' }, { stringValue: JSON.stringify(user3) }]],
