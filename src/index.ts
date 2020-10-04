@@ -4,6 +4,7 @@ import {
   ExactFilter,
   Item,
   ItemKey,
+  OrdFilter,
   Query,
   QueryableStore,
   QueryResult,
@@ -114,6 +115,78 @@ export class AuroraPostgresExactIndex<
       })
 
       where.push(`${name} IN (:${paramNames.join(', :')})`)
+    }
+
+    return { where, parameters }
+  }
+}
+
+export class AuroraPostgresOrdIndex<
+  I extends Item<any, any, any>,
+  T
+> extends AuroraPostgresIndex<I, T, OrdFilter<T>> {
+  createParams(name: string, item: I) {
+    return {
+      fields: [name],
+      values: [`:${name}`],
+      parameters: [this.parameterFromItem(name, item)],
+    }
+  }
+
+  updateParams(name: string, item: I) {
+    return {
+      set: [`${name} = :${name}`],
+      parameters: [this.parameterFromItem(name, item)],
+    }
+  }
+
+  filterParams(name: string, filter: OrdFilter<T>) {
+    const where: string[] = []
+    const parameters: RDSDataService.SqlParametersList = []
+
+    if (filter.eq !== undefined) {
+      const paramName = `${name}__eq`
+      where.push(`${name} = :${paramName}`)
+      parameters.push({
+        name: paramName,
+        value: this.parameterValue(filter.eq),
+      })
+    }
+
+    if (filter.gt !== undefined) {
+      const paramName = `${name}_gt`
+      where.push(`${name} > :${paramName}`)
+      parameters.push({
+        name: paramName,
+        value: this.parameterValue(filter.gt),
+      })
+    }
+
+    if (filter.gte !== undefined) {
+      const paramName = `${name}_gte`
+      where.push(`${name} >= :${paramName}`)
+      parameters.push({
+        name: paramName,
+        value: this.parameterValue(filter.gte),
+      })
+    }
+
+    if (filter.lt !== undefined) {
+      const paramName = `${name}_lt`
+      where.push(`${name} < :${paramName}`)
+      parameters.push({
+        name: paramName,
+        value: this.parameterValue(filter.lt),
+      })
+    }
+
+    if (filter.lte !== undefined) {
+      const paramName = `${name}_lte`
+      where.push(`${name} <= :${paramName}`)
+      parameters.push({
+        name: paramName,
+        value: this.parameterValue(filter.lte),
+      })
     }
 
     return { where, parameters }

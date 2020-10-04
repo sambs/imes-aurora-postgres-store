@@ -4,6 +4,7 @@ import { ExactFilter, OrdFilter, Query } from 'imes'
 import {
   AuroraPostgresStore,
   AuroraPostgresExactIndex,
+  AuroraPostgresOrdIndex,
   auroraLongValue,
   auroraNullable,
   auroraStringValue,
@@ -51,7 +52,7 @@ const store = new AuroraPostgresStore<User, UserQuery>({
       auroraStringValue,
       (user: User) => user.data.name
     ),
-    age: new AuroraPostgresExactIndex(
+    age: new AuroraPostgresOrdIndex(
       auroraNullable(auroraLongValue),
       (user: User) => user.data.age
     ),
@@ -336,6 +337,34 @@ test('AuroraPostgresStore#find with in filter', async () => {
         name: 'name__in_1',
         value: {
           stringValue: 'Sunshine',
+        },
+      },
+    ],
+  })
+})
+
+test('AuroraPostgresStore#find with a gt filter', async () => {
+  const executeStatementResponse: RDSDataService.ExecuteStatementResponse = {
+    records: [[{ stringValue: 'u1' }, { stringValue: JSON.stringify(user1) }]],
+  }
+
+  mockedRdsClient.executeStatement = jest.fn(() => ({
+    promise: jest.fn().mockResolvedValue(executeStatementResponse),
+  })) as any
+
+  expect(await store.find({ filter: { age: { gt: 45 } } })).toEqual({
+    cursor: null,
+    items: [user1],
+  })
+
+  expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
+    ...commonQueryParams,
+    sql: `SELECT id,item FROM users WHERE age > :age_gt ORDER BY id`,
+    parameters: [
+      {
+        name: 'age_gt',
+        value: {
+          longValue: 45,
         },
       },
     ],
