@@ -3,8 +3,10 @@ import { ExactFilter, OrdFilter, Query } from 'imes'
 
 import {
   AuroraPostgresStore,
-  AuroraPostgresExactIndex,
-  AuroraPostgresOrdIndex,
+  AuroraPostgresIndex,
+  AuroraPostgresIndexes,
+  AuroraPostgresExactFilter,
+  AuroraPostgresOrdFilter,
   auroraLongValue,
   auroraNullable,
   auroraStringValue,
@@ -30,28 +32,34 @@ interface UserMeta {
 
 type User = UserData & UserMeta
 
-export interface UserQuery extends Query {
+interface UserQuery extends Query {
   filter?: {
     name?: ExactFilter<string>
     age?: OrdFilter<number>
   }
 }
 
-const store = new AuroraPostgresStore<User, UserQuery>({
+interface UserIndexes extends AuroraPostgresIndexes<User> {
+  name: AuroraPostgresIndex<User, User['name']>
+  age: AuroraPostgresIndex<User, User['age']>
+}
+
+const store = new AuroraPostgresStore<User, UserQuery, UserIndexes>({
   clusterArn: 'cluster-123',
   secretArn: 'secret-123',
   table: 'users',
   database: 'product',
   getKey: ({ id }) => id,
   indexes: {
-    name: new AuroraPostgresExactIndex(
-      auroraStringValue,
-      (user: User) => user.name
-    ),
-    age: new AuroraPostgresOrdIndex(
+    name: new AuroraPostgresIndex(auroraStringValue, (user: User) => user.name),
+    age: new AuroraPostgresIndex(
       auroraNullable(auroraLongValue),
       (user: User) => user.age
     ),
+  },
+  filters: {
+    name: new AuroraPostgresExactFilter('name'),
+    age: new AuroraPostgresOrdFilter('age'),
   },
 })
 

@@ -1,10 +1,7 @@
 import * as RDSDataService from 'aws-sdk/clients/rdsdataservice'
-
 import { ExactFilter, OrdFilter, Query, QueryResult, Store } from 'imes'
 
-type Filter = {}
-
-export abstract class AuroraPostgresIndex<I, T, F extends Filter> {
+export abstract class IAuroraPostgresIndex<I, T> {
   valueFromItem: (item: I) => T
   parameterValue: (value: T) => RDSDataService.Field
 
@@ -37,21 +34,9 @@ export abstract class AuroraPostgresIndex<I, T, F extends Filter> {
     set: string[]
     parameters: RDSDataService.SqlParametersList
   }
-
-  abstract filterParams(
-    name: string,
-    filter: F
-  ): {
-    where: string[]
-    parameters: RDSDataService.SqlParametersList
-  }
 }
 
-export class AuroraPostgresExactIndex<I, T> extends AuroraPostgresIndex<
-  I,
-  T,
-  ExactFilter<T>
-> {
+export class AuroraPostgresIndex<I, T> extends IAuroraPostgresIndex<I, T> {
   createParams(name: string, item: I) {
     return {
       fields: [name],
@@ -66,8 +51,34 @@ export class AuroraPostgresExactIndex<I, T> extends AuroraPostgresIndex<
       parameters: [this.parameterFromItem(name, item)],
     }
   }
+}
 
-  filterParams(name: string, filter: ExactFilter<T>) {
+export abstract class AuroraPostgresFilter<
+  F,
+  X extends AuroraPostgresIndexes<any>
+> {
+  abstract filterParams(
+    indexes: X,
+    name: string,
+    filter: F
+  ): {
+    where: string[]
+    parameters: RDSDataService.SqlParametersList
+  }
+}
+
+export class AuroraPostgresExactFilter<
+  T,
+  X extends AuroraPostgresIndexes<any>
+> extends AuroraPostgresFilter<ExactFilter<T>, X> {
+  indexName: keyof X
+
+  constructor(indexName: keyof X) {
+    super()
+    this.indexName = indexName
+  }
+
+  filterParams(indexes: X, name: string, filter: ExactFilter<T>) {
     const where: string[] = []
     const parameters: RDSDataService.SqlParametersList = []
 
@@ -76,7 +87,7 @@ export class AuroraPostgresExactIndex<I, T> extends AuroraPostgresIndex<
       where.push(`${name} = :${paramName}`)
       parameters.push({
         name: paramName,
-        value: this.parameterValue(filter.eq),
+        value: indexes[this.indexName].parameterValue(filter.eq),
       })
     }
 
@@ -85,7 +96,7 @@ export class AuroraPostgresExactIndex<I, T> extends AuroraPostgresIndex<
       where.push(`${name} <> :${paramName}`)
       parameters.push({
         name: paramName,
-        value: this.parameterValue(filter.ne),
+        value: indexes[this.indexName].parameterValue(filter.ne),
       })
     }
 
@@ -99,7 +110,7 @@ export class AuroraPostgresExactIndex<I, T> extends AuroraPostgresIndex<
         paramNames.push(paramName)
         parameters.push({
           name: paramName,
-          value: this.parameterValue(value),
+          value: indexes[this.indexName].parameterValue(value),
         })
       })
 
@@ -110,27 +121,18 @@ export class AuroraPostgresExactIndex<I, T> extends AuroraPostgresIndex<
   }
 }
 
-export class AuroraPostgresOrdIndex<I, T> extends AuroraPostgresIndex<
-  I,
+export class AuroraPostgresOrdFilter<
   T,
-  OrdFilter<T>
-> {
-  createParams(name: string, item: I) {
-    return {
-      fields: [name],
-      values: [`:${name}`],
-      parameters: [this.parameterFromItem(name, item)],
-    }
+  X extends AuroraPostgresIndexes<any>
+> extends AuroraPostgresFilter<OrdFilter<T>, X> {
+  indexName: keyof X
+
+  constructor(indexName: keyof X) {
+    super()
+    this.indexName = indexName
   }
 
-  updateParams(name: string, item: I) {
-    return {
-      set: [`${name} = :${name}`],
-      parameters: [this.parameterFromItem(name, item)],
-    }
-  }
-
-  filterParams(name: string, filter: OrdFilter<T>) {
+  filterParams(indexes: X, name: string, filter: OrdFilter<T>) {
     const where: string[] = []
     const parameters: RDSDataService.SqlParametersList = []
 
@@ -139,7 +141,7 @@ export class AuroraPostgresOrdIndex<I, T> extends AuroraPostgresIndex<
       where.push(`${name} = :${paramName}`)
       parameters.push({
         name: paramName,
-        value: this.parameterValue(filter.eq),
+        value: indexes[this.indexName].parameterValue(filter.eq),
       })
     }
 
@@ -148,7 +150,7 @@ export class AuroraPostgresOrdIndex<I, T> extends AuroraPostgresIndex<
       where.push(`${name} > :${paramName}`)
       parameters.push({
         name: paramName,
-        value: this.parameterValue(filter.gt),
+        value: indexes[this.indexName].parameterValue(filter.gt),
       })
     }
 
@@ -157,7 +159,7 @@ export class AuroraPostgresOrdIndex<I, T> extends AuroraPostgresIndex<
       where.push(`${name} >= :${paramName}`)
       parameters.push({
         name: paramName,
-        value: this.parameterValue(filter.gte),
+        value: indexes[this.indexName].parameterValue(filter.gte),
       })
     }
 
@@ -166,7 +168,7 @@ export class AuroraPostgresOrdIndex<I, T> extends AuroraPostgresIndex<
       where.push(`${name} < :${paramName}`)
       parameters.push({
         name: paramName,
-        value: this.parameterValue(filter.lt),
+        value: indexes[this.indexName].parameterValue(filter.lt),
       })
     }
 
@@ -175,7 +177,7 @@ export class AuroraPostgresOrdIndex<I, T> extends AuroraPostgresIndex<
       where.push(`${name} <= :${paramName}`)
       parameters.push({
         name: paramName,
-        value: this.parameterValue(filter.lte),
+        value: indexes[this.indexName].parameterValue(filter.lte),
       })
     }
 
@@ -206,29 +208,47 @@ export const auroraNullable = <T>(
   else return higher(value)
 }
 
-type AuroraPostgresIndexes<I, Q extends Query, F = Required<Q['filter']>> = {
-  [name in keyof F]: AuroraPostgresIndex<I, any, F[name]>
+export type AuroraPostgresIndexes<I> = {
+  [name: string]: AuroraPostgresIndex<I, any>
 }
 
-export interface AuroraPostgresStoreOptions<I, Q extends Query> {
+export type AuroraPostgresFilters<
+  I,
+  Q extends Query,
+  X extends AuroraPostgresIndexes<I>,
+  F = Required<Q['filter']>
+> = {
+  [name in keyof F]: AuroraPostgresFilter<F[name], X>
+}
+
+export interface AuroraPostgresStoreOptions<
+  I,
+  Q extends Query,
+  X extends AuroraPostgresIndexes<I>
+> {
   client?: RDSDataService
   clusterArn: string
   database: string
   secretArn: string
   table: string
   getKey: (item: I) => string
-  indexes: AuroraPostgresIndexes<I, Q>
+  indexes: X
+  filters: AuroraPostgresFilters<I, Q, X>
 }
 
-export class AuroraPostgresStore<I, Q extends Query>
-  implements Store<I, string, Q> {
+export class AuroraPostgresStore<
+  I,
+  Q extends Query,
+  X extends AuroraPostgresIndexes<I>
+> implements Store<I, string, Q> {
   client: RDSDataService
   clusterArn: string
   database: string
   secretArn: string
   table: string
   getKey: (item: I) => string
-  indexes: AuroraPostgresIndexes<I, Q>
+  indexes: X
+  filters: AuroraPostgresFilters<I, Q, X>
 
   constructor({
     client,
@@ -238,7 +258,8 @@ export class AuroraPostgresStore<I, Q extends Query>
     secretArn,
     getKey,
     indexes,
-  }: AuroraPostgresStoreOptions<I, Q>) {
+    filters,
+  }: AuroraPostgresStoreOptions<I, Q, X>) {
     this.client = client || new RDSDataService()
     this.clusterArn = clusterArn
     this.database = database
@@ -246,6 +267,7 @@ export class AuroraPostgresStore<I, Q extends Query>
     this.table = table
     this.getKey = getKey
     this.indexes = indexes
+    this.filters = filters
   }
 
   async get(key: string): Promise<I | undefined> {
@@ -337,12 +359,12 @@ export class AuroraPostgresStore<I, Q extends Query>
     }
 
     if (query.filter) {
-      for (const name in this.indexes) {
+      for (const name in this.filters) {
+        const filter = this.filters[name]
         if (name in query.filter) {
-          const index = this.indexes[name]
-          const filter = query.filter[name]
-          if (filter) {
-            const params = index.filterParams(name, filter)
+          const filterValue = query.filter[name]
+          if (filterValue) {
+            const params = filter.filterParams(this.indexes, name, filterValue)
             where = [...where, ...params.where]
             parameters = [...parameters, ...params.parameters]
           }
