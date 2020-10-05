@@ -8,6 +8,7 @@ const store = new AuroraPostgresStore<User, {}>({
   secretArn: 'secret-123',
   table: 'users',
   database: 'product',
+  getKey: ({ id }) => id,
   indexes: {},
 })
 
@@ -22,47 +23,36 @@ const commonQueryParams = {
 }
 
 interface UserData {
+  id: string
   name: string
   age: number | null
 }
-
-type UserKey = string
 
 interface UserMeta {
   createdAt: string
 }
 
-interface User {
-  data: UserData
-  meta: UserMeta
-  key: UserKey
-}
+type User = UserData & UserMeta
 
 const user1: User = {
-  data: {
-    name: 'Trevor',
-    age: 47,
-  },
-  meta: { createdAt: 'yesterday' },
-  key: 'u1',
+  age: 47,
+  createdAt: 'yesterday',
+  id: 'u1',
+  name: 'Trevor',
 }
 
 const user2: User = {
-  data: {
-    name: 'Whatever',
-    age: 15,
-  },
-  meta: { createdAt: 'today' },
-  key: 'u2',
+  age: 15,
+  createdAt: 'today',
+  id: 'u2',
+  name: 'Whatever',
 }
 
 const user3: User = {
-  data: {
-    name: 'Eternal',
-    age: null,
-  },
-  meta: { createdAt: 'now' },
-  key: 'u3',
+  age: null,
+  createdAt: 'now',
+  id: 'u3',
+  name: 'Eternal',
 }
 
 test('AuroraPostgresStore#create', async () => {
@@ -75,12 +65,12 @@ test('AuroraPostgresStore#create', async () => {
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
     sql: `
-  INSERT INTO users (id, item)
-  VALUES(:id, :item::jsonb)
+  INSERT INTO users (key, item)
+  VALUES(:key, :item::jsonb)
 `,
     parameters: [
       {
-        name: 'id',
+        name: 'key',
         value: {
           stringValue: 'u1',
         },
@@ -107,11 +97,11 @@ test('AuroraPostgresStore#update', async () => {
     sql: `
   UPDATE users
   SET item = :item::jsonb
-  WHERE id = :id
+  WHERE key = :key
 `,
     parameters: [
       {
-        name: 'id',
+        name: 'key',
         value: {
           stringValue: 'u1',
         },
@@ -139,10 +129,10 @@ test('AuroraPostgresStore#get', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT item FROM users WHERE id = :id`,
+    sql: `SELECT item FROM users WHERE key = :key`,
     parameters: [
       {
-        name: 'id',
+        name: 'key',
         value: {
           stringValue: 'u1',
         },
@@ -177,7 +167,7 @@ test('AuroraPostgresStore#find', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT id,item FROM users ORDER BY id`,
+    sql: `SELECT key,item FROM users ORDER BY key`,
     parameters: [],
   })
 })
@@ -202,7 +192,7 @@ test('AuroraPostgresStore#find with limit', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT id,item FROM users ORDER BY id LIMIT 3`,
+    sql: `SELECT key,item FROM users ORDER BY key LIMIT 3`,
     parameters: [],
   })
 })
@@ -226,10 +216,10 @@ test('AuroraPostgresStore#find with limit and cursor', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT id,item FROM users WHERE id > :id ORDER BY id LIMIT 3`,
+    sql: `SELECT key,item FROM users WHERE key > :key ORDER BY key LIMIT 3`,
     parameters: [
       {
-        name: 'id',
+        name: 'key',
         value: {
           stringValue: 'u1',
         },

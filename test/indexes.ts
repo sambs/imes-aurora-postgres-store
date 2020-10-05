@@ -19,23 +19,18 @@ const commonQueryParams = {
 }
 
 interface UserData {
+  id: string
   name: string
   age: number | null
 }
-
-type UserKey = string
 
 interface UserMeta {
   createdAt: string
 }
 
-interface User {
-  data: UserData
-  meta: UserMeta
-  key: UserKey
-}
+type User = UserData & UserMeta
 
-export interface UserQuery extends Query<User> {
+export interface UserQuery extends Query {
   filter?: {
     name?: ExactFilter<string>
     age?: OrdFilter<number>
@@ -47,14 +42,15 @@ const store = new AuroraPostgresStore<User, UserQuery>({
   secretArn: 'secret-123',
   table: 'users',
   database: 'product',
+  getKey: ({ id }) => id,
   indexes: {
     name: new AuroraPostgresExactIndex(
       auroraStringValue,
-      (user: User) => user.data.name
+      (user: User) => user.name
     ),
     age: new AuroraPostgresOrdIndex(
       auroraNullable(auroraLongValue),
-      (user: User) => user.data.age
+      (user: User) => user.age
     ),
   },
 })
@@ -64,30 +60,24 @@ const mockedRdsClient: jest.Mocked<RDSDataService> = store.client as jest.Mocked
 >
 
 const user1: User = {
-  data: {
-    name: 'Trevor',
-    age: 47,
-  },
-  meta: { createdAt: 'yesterday' },
-  key: 'u1',
+  age: 47,
+  createdAt: 'yesterday',
+  id: 'u1',
+  name: 'Trevor',
 }
 
 const user2: User = {
-  data: {
-    name: 'Whatever',
-    age: 15,
-  },
-  meta: { createdAt: 'today' },
-  key: 'u2',
+  age: 15,
+  createdAt: 'today',
+  id: 'u2',
+  name: 'Whatever',
 }
 
 const user3: User = {
-  data: {
-    name: 'Eternal',
-    age: null,
-  },
-  meta: { createdAt: 'now' },
-  key: 'u3',
+  age: null,
+  createdAt: 'now',
+  id: 'u3',
+  name: 'Eternal',
 }
 
 test('AuroraPostgresStore#create', async () => {
@@ -100,12 +90,12 @@ test('AuroraPostgresStore#create', async () => {
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
     sql: `
-  INSERT INTO users (id, item, name, age)
-  VALUES(:id, :item::jsonb, :name, :age)
+  INSERT INTO users (key, item, name, age)
+  VALUES(:key, :item::jsonb, :name, :age)
 `,
     parameters: [
       {
-        name: 'id',
+        name: 'key',
         value: {
           stringValue: 'u1',
         },
@@ -142,12 +132,12 @@ test('AuroraPostgresStore#create with a null value', async () => {
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
     sql: `
-  INSERT INTO users (id, item, name, age)
-  VALUES(:id, :item::jsonb, :name, :age)
+  INSERT INTO users (key, item, name, age)
+  VALUES(:key, :item::jsonb, :name, :age)
 `,
     parameters: [
       {
-        name: 'id',
+        name: 'key',
         value: {
           stringValue: 'u3',
         },
@@ -186,11 +176,11 @@ test('AuroraPostgresStore#update', async () => {
     sql: `
   UPDATE users
   SET item = :item::jsonb, name = :name, age = :age
-  WHERE id = :id
+  WHERE key = :key
 `,
     parameters: [
       {
-        name: 'id',
+        name: 'key',
         value: {
           stringValue: 'u1',
         },
@@ -230,10 +220,10 @@ test('AuroraPostgresStore#get', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT item FROM users WHERE id = :id`,
+    sql: `SELECT item FROM users WHERE key = :key`,
     parameters: [
       {
-        name: 'id',
+        name: 'key',
         value: {
           stringValue: 'u1',
         },
@@ -264,7 +254,7 @@ test('AuroraPostgresStore#find with eq filter', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT id,item FROM users WHERE name = :name__eq ORDER BY id`,
+    sql: `SELECT key,item FROM users WHERE name = :name__eq ORDER BY key`,
     parameters: [
       {
         name: 'name__eq',
@@ -295,7 +285,7 @@ test('AuroraPostgresStore#find with ne filter', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT id,item FROM users WHERE name <> :name__ne ORDER BY id`,
+    sql: `SELECT key,item FROM users WHERE name <> :name__ne ORDER BY key`,
     parameters: [
       {
         name: 'name__ne',
@@ -325,7 +315,7 @@ test('AuroraPostgresStore#find with in filter', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT id,item FROM users WHERE name IN (:name__in_0, :name__in_1) ORDER BY id`,
+    sql: `SELECT key,item FROM users WHERE name IN (:name__in_0, :name__in_1) ORDER BY key`,
     parameters: [
       {
         name: 'name__in_0',
@@ -359,7 +349,7 @@ test('AuroraPostgresStore#find with a gt filter', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT id,item FROM users WHERE age > :age_gt ORDER BY id`,
+    sql: `SELECT key,item FROM users WHERE age > :age_gt ORDER BY key`,
     parameters: [
       {
         name: 'age_gt',
