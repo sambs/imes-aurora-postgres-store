@@ -37,7 +37,7 @@ export interface AuroraPostgresStoreOptions<I, Q extends Query> {
   database: string
   secretArn: string
   table: string
-  getKey: (item: I) => string
+  getItemKey: (item: I) => string
   indexes: AuroraPostgresIndexes<I>
   filters: AuroraPostgresFilters<Q>
 }
@@ -49,7 +49,7 @@ export class AuroraPostgresStore<I, Q extends Query>
   database: string
   secretArn: string
   table: string
-  getKey: (item: I) => string
+  getItemKey: (item: I) => string
   indexes: AuroraPostgresIndexes<I>
   filters: AuroraPostgresFilters<Q>
 
@@ -59,7 +59,7 @@ export class AuroraPostgresStore<I, Q extends Query>
     database,
     table,
     secretArn,
-    getKey,
+    getItemKey,
     indexes,
     filters,
   }: AuroraPostgresStoreOptions<I, Q>) {
@@ -68,7 +68,7 @@ export class AuroraPostgresStore<I, Q extends Query>
     this.database = database
     this.secretArn = secretArn
     this.table = table
-    this.getKey = getKey
+    this.getItemKey = getItemKey
     this.indexes = indexes
     this.filters = filters
   }
@@ -94,7 +94,7 @@ export class AuroraPostgresStore<I, Q extends Query>
     let columns = ['key', 'item']
     let values = [':key, :item::jsonb']
     let parameters: RDSDataService.SqlParametersList = [
-      { name: 'key', value: { stringValue: this.getKey(item) } },
+      { name: 'key', value: { stringValue: this.getItemKey(item) } },
       { name: 'item', value: { stringValue: JSON.stringify(item) } },
     ]
 
@@ -126,7 +126,7 @@ export class AuroraPostgresStore<I, Q extends Query>
   async update(item: I): Promise<void> {
     let set = ['item = :item::jsonb']
     let parameters: RDSDataService.SqlParametersList = [
-      { name: 'key', value: { stringValue: this.getKey(item) } },
+      { name: 'key', value: { stringValue: this.getItemKey(item) } },
       { name: 'item', value: { stringValue: JSON.stringify(item) } },
     ]
 

@@ -8,7 +8,7 @@ const store = new AuroraPostgresStore<User, {}>({
   secretArn: 'secret-123',
   table: 'users',
   database: 'product',
-  getKey: ({ id }) => id,
+  getItemKey: ({ id }) => id,
   indexes: {},
   filters: {},
 })

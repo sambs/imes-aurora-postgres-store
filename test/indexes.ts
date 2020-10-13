@@ -42,7 +42,7 @@ const store = new AuroraPostgresStore<User, UserQuery>({
   secretArn: 'secret-123',
   table: 'users',
   database: 'product',
-  getKey: ({ id }) => id,
+  getItemKey: ({ id }) => id,
   indexes: {
     name: {
       pick: user => user.name,
