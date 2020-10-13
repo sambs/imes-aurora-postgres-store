@@ -112,7 +112,7 @@ export class AuroraPostgresStore<I, Q extends Query>
     await this.client
       .executeStatement({
         sql: `
-  INSERT INTO ${this.table} (${columns.join(', ')})
+  INSERT INTO ${this.table} (${columns.map(name => `"${name}"`).join(', ')})
   VALUES(${values.join(', ')})
 `,
         parameters,
@@ -132,7 +132,7 @@ export class AuroraPostgresStore<I, Q extends Query>
 
     for (const name in this.indexes) {
       const index = this.indexes[name]
-      set.push(`${name} = :${name}`)
+      set.push(`"${name}" = :${name}`)
       parameters.push({
         name,
         value: index.value(index.pick(item)),
@@ -223,7 +223,7 @@ export class AuroraPostgresStore<I, Q extends Query>
   async setup() {
     await this.client
       .executeStatement({
-        sql: `CREATE TABLE ${this.table} (key varchar(64) PRIMARY KEY, item jsonb)`,
+        sql: `CREATE TABLE ${this.table} ("key" varchar(64) PRIMARY KEY, "item" jsonb)`,
         resourceArn: this.clusterArn,
         secretArn: this.secretArn,
         database: this.database,

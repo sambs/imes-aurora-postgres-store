@@ -66,7 +66,7 @@ test('AuroraPostgresStore#create', async () => {
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
     sql: `
-  INSERT INTO users (key, item)
+  INSERT INTO users ("key", "item")
   VALUES(:key, :item::jsonb)
 `,
     parameters: [

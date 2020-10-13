@@ -94,7 +94,7 @@ test('AuroraPostgresStore#create', async () => {
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
     sql: `
-  INSERT INTO users (key, item, name, age)
+  INSERT INTO users ("key", "item", "name", "age")
   VALUES(:key, :item::jsonb, :name, :age)
 `,
     parameters: [
@@ -130,7 +130,7 @@ test('AuroraPostgresStore#create with a null value', async () => {
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
     sql: `
-  INSERT INTO users (key, item, name, age)
+  INSERT INTO users ("key", "item", "name", "age")
   VALUES(:key, :item::jsonb, :name, :age)
 `,
     parameters: [
@@ -171,7 +171,7 @@ test('AuroraPostgresStore#update', async () => {
     ...commonQueryParams,
     sql: `
   UPDATE users
-  SET item = :item::jsonb, name = :name, age = :age
+  SET item = :item::jsonb, "name" = :name, "age" = :age
   WHERE key = :key
 `,
     parameters: [
@@ -250,7 +250,7 @@ test('AuroraPostgresStore#find with eq filter', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT key,item FROM users WHERE name = :name__eq ORDER BY key`,
+    sql: `SELECT key,item FROM users WHERE "name" = :name__eq ORDER BY key`,
     parameters: [
       {
         name: 'name__eq',
@@ -281,7 +281,7 @@ test('AuroraPostgresStore#find with ne filter', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT key,item FROM users WHERE name <> :name__ne ORDER BY key`,
+    sql: `SELECT key,item FROM users WHERE "name" <> :name__ne ORDER BY key`,
     parameters: [
       {
         name: 'name__ne',
@@ -311,7 +311,7 @@ test('AuroraPostgresStore#find with in filter', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT key,item FROM users WHERE name IN (:name__in_0, :name__in_1) ORDER BY key`,
+    sql: `SELECT key,item FROM users WHERE "name" IN (:name__in_0, :name__in_1) ORDER BY key`,
     parameters: [
       {
         name: 'name__in_0',
@@ -345,7 +345,7 @@ test('AuroraPostgresStore#find with a gt filter', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT key,item FROM users WHERE age > :age__gt ORDER BY key`,
+    sql: `SELECT key,item FROM users WHERE "age" > :age__gt ORDER BY key`,
     parameters: [
       {
         name: 'age__gt',

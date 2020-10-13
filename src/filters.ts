@@ -7,7 +7,7 @@ export const eqFilter = <T>(
 ) => (value: T) => {
   const paramName = `${index}__eq`
   return {
-    where: `${index} = :${paramName}`,
+    where: `"${index}" = :${paramName}`,
     parameters: [
       {
         name: paramName,
@@ -25,7 +25,7 @@ export const neFilter = <T>(
 ) => (value: T) => {
   const paramName = `${index}__ne`
   return {
-    where: `${index} <> :${paramName}`,
+    where: `"${index}" <> :${paramName}`,
     parameters: [
       {
         name: paramName,
@@ -53,7 +53,7 @@ export const inFilter = <T>(
     }
   })
   return {
-    where: `${index} IN (:${items
+    where: `"${index}" IN (:${items
       .map(({ paramName }) => paramName)
       .join(', :')})`,
     parameters: items.map(({ parameter }) => parameter),
@@ -67,7 +67,7 @@ export const gtFilter = <T>(
 ) => (value: T) => {
   const paramName = `${index}__gt`
   return {
-    where: `${index} > :${paramName}`,
+    where: `"${index}" > :${paramName}`,
     parameters: [
       {
         name: paramName,
@@ -85,7 +85,7 @@ export const gteFilter = <T>(
 ) => (value: T) => {
   const paramName = `${index}__gte`
   return {
-    where: `${index} >= :${paramName}`,
+    where: `"${index}" >= :${paramName}`,
     parameters: [
       {
         name: paramName,
@@ -103,7 +103,7 @@ export const ltFilter = <T>(
 ) => (value: T) => {
   const paramName = `${index}__lt`
   return {
-    where: `${index} < :${paramName}`,
+    where: `"${index}" < :${paramName}`,
     parameters: [
       {
         name: paramName,
@@ -121,7 +121,7 @@ export const lteFilter = <T>(
 ) => (value: T) => {
   const paramName = `${index}__lte`
   return {
-    where: `${index} <= :${paramName}`,
+    where: `"${index}" <= :${paramName}`,
     parameters: [
       {
         name: paramName,
