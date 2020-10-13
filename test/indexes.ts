@@ -3,13 +3,11 @@ import { ExactFilter, OrdFilter, Query } from 'imes'
 
 import {
   AuroraPostgresStore,
-  AuroraPostgresIndex,
-  AuroraPostgresIndexes,
-  AuroraPostgresExactFilter,
-  AuroraPostgresOrdFilter,
   auroraLongValue,
   auroraNullable,
   auroraStringValue,
+  exactFilters,
+  ordFilters,
 } from '../src'
 
 jest.mock('aws-sdk/clients/rdsdataservice')
@@ -39,27 +37,25 @@ interface UserQuery extends Query {
   }
 }
 
-interface UserIndexes extends AuroraPostgresIndexes<User> {
-  name: AuroraPostgresIndex<User, User['name']>
-  age: AuroraPostgresIndex<User, User['age']>
-}
-
-const store = new AuroraPostgresStore<User, UserQuery, UserIndexes>({
+const store = new AuroraPostgresStore<User, UserQuery>({
   clusterArn: 'cluster-123',
   secretArn: 'secret-123',
   table: 'users',
   database: 'product',
   getKey: ({ id }) => id,
   indexes: {
-    name: new AuroraPostgresIndex(auroraStringValue, (user: User) => user.name),
-    age: new AuroraPostgresIndex(
-      auroraNullable(auroraLongValue),
-      (user: User) => user.age
-    ),
+    name: {
+      pick: user => user.name,
+      value: auroraStringValue,
+    },
+    age: {
+      pick: user => user.age,
+      value: auroraNullable(auroraLongValue),
+    },
   },
   filters: {
-    name: new AuroraPostgresExactFilter('name'),
-    age: new AuroraPostgresOrdFilter('age'),
+    name: exactFilters('name', auroraStringValue),
+    age: ordFilters('age', auroraLongValue),
   },
 })
 
@@ -104,27 +100,21 @@ test('AuroraPostgresStore#create', async () => {
     parameters: [
       {
         name: 'key',
-        value: {
-          stringValue: 'u1',
-        },
+        value: { stringValue: 'u1' },
       },
       {
         name: 'item',
-        value: {
-          stringValue: JSON.stringify(user1),
-        },
+        value: { stringValue: JSON.stringify(user1) },
       },
       {
         name: 'name',
-        value: {
-          stringValue: 'Trevor',
-        },
+        value: { stringValue: 'Trevor' },
+        typeHint: undefined,
       },
       {
         name: 'age',
-        value: {
-          longValue: 47,
-        },
+        value: { longValue: 47 },
+        typeHint: undefined,
       },
     ],
   })
@@ -158,15 +148,13 @@ test('AuroraPostgresStore#create with a null value', async () => {
       },
       {
         name: 'name',
-        value: {
-          stringValue: 'Eternal',
-        },
+        value: { stringValue: 'Eternal' },
+        typeHint: undefined,
       },
       {
         name: 'age',
-        value: {
-          isNull: true,
-        },
+        value: { isNull: true },
+        typeHint: undefined,
       },
     ],
   })
@@ -357,10 +345,10 @@ test('AuroraPostgresStore#find with a gt filter', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT key,item FROM users WHERE age > :age_gt ORDER BY key`,
+    sql: `SELECT key,item FROM users WHERE age > :age__gt ORDER BY key`,
     parameters: [
       {
-        name: 'age_gt',
+        name: 'age__gt',
         value: {
           longValue: 45,
         },

@@ -1,9 +1,9 @@
 import * as RDSDataService from 'aws-sdk/clients/rdsdataservice'
-import { AuroraPostgresStore, AuroraPostgresIndexes } from '../src'
+import { AuroraPostgresStore } from '../src'
 
 jest.mock('aws-sdk/clients/rdsdataservice')
 
-const store = new AuroraPostgresStore<User, {}, AuroraPostgresIndexes<User>>({
+const store = new AuroraPostgresStore<User, {}>({
   clusterArn: 'cluster-123',
   secretArn: 'secret-123',
   table: 'users',
