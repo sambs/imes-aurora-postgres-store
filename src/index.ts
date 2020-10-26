@@ -192,6 +192,8 @@ export class AuroraPostgresStore<I, Q extends Query>
     sql = `${sql} ORDER BY key`
 
     if (hasLimit) {
+      // Fetch one extra record to determine if there are more records after
+      // the amount requested
       sql = `${sql} LIMIT ${query.limit! + 1}`
     }
 
@@ -214,10 +216,16 @@ export class AuroraPostgresStore<I, Q extends Query>
       records = records.slice(0, query.limit!)
     }
 
-    return {
-      cursor,
-      items: records.map(([_key, { stringValue }]) => JSON.parse(stringValue!)),
-    }
+    const edges = records.map(
+      ([{ stringValue: key }, { stringValue: item }]) => ({
+        cursor: key!,
+        node: JSON.parse(item!),
+      })
+    )
+
+    const items = edges.map(({ node }) => node)
+
+    return { cursor, edges, items }
   }
 
   async setup() {

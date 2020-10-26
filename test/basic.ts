@@ -163,6 +163,11 @@ test('AuroraPostgresStore#find', async () => {
 
   expect(await store.find({})).toEqual({
     cursor: null,
+    edges: [
+      { cursor: 'u1', node: user1 },
+      { cursor: 'u2', node: user2 },
+      { cursor: 'u3', node: user3 },
+    ],
     items: [user1, user2, user3],
   })
 
@@ -188,6 +193,10 @@ test('AuroraPostgresStore#find with limit', async () => {
 
   expect(await store.find({ limit: 2 })).toEqual({
     cursor: 'u2',
+    edges: [
+      { cursor: 'u1', node: user1 },
+      { cursor: 'u2', node: user2 },
+    ],
     items: [user1, user2],
   })
 
@@ -212,6 +221,10 @@ test('AuroraPostgresStore#find with limit and cursor', async () => {
 
   expect(await store.find({ cursor: 'u1', limit: 2 })).toEqual({
     cursor: null,
+    edges: [
+      { cursor: 'u2', node: user2 },
+      { cursor: 'u3', node: user3 },
+    ],
     items: [user2, user3],
   })
 

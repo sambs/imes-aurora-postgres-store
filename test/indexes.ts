@@ -245,6 +245,7 @@ test('AuroraPostgresStore#find with eq filter', async () => {
 
   expect(await store.find({ filter: { name: { eq: 'Eternal' } } })).toEqual({
     cursor: null,
+    edges: [{ cursor: 'u3', node: user3 }],
     items: [user3],
   })
 
@@ -276,6 +277,10 @@ test('AuroraPostgresStore#find with ne filter', async () => {
 
   expect(await store.find({ filter: { name: { ne: 'Eternal' } } })).toEqual({
     cursor: null,
+    edges: [
+      { cursor: 'u1', node: user1 },
+      { cursor: 'u2', node: user2 },
+    ],
     items: [user1, user2],
   })
 
@@ -306,6 +311,7 @@ test('AuroraPostgresStore#find with in filter', async () => {
     await store.find({ filter: { name: { in: ['Eternal', 'Sunshine'] } } })
   ).toEqual({
     cursor: null,
+    edges: [{ cursor: 'u3', node: user3 }],
     items: [user3],
   })
 
@@ -340,6 +346,7 @@ test('AuroraPostgresStore#find with a gt filter', async () => {
 
   expect(await store.find({ filter: { age: { gt: 45 } } })).toEqual({
     cursor: null,
+    edges: [{ cursor: 'u1', node: user1 }],
     items: [user1],
   })
 
