@@ -66,7 +66,7 @@ test('AuroraPostgresStore#create', async () => {
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
     sql: `
-  INSERT INTO users ("key", "item")
+  INSERT INTO "users" ("key", "item")
   VALUES(:key, :item::jsonb)
 `,
     parameters: [
@@ -96,7 +96,7 @@ test('AuroraPostgresStore#update', async () => {
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
     sql: `
-  UPDATE users
+  UPDATE "users"
   SET item = :item::jsonb
   WHERE key = :key
 `,
@@ -130,7 +130,7 @@ test('AuroraPostgresStore#get', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT item FROM users WHERE key = :key`,
+    sql: `SELECT item FROM "users" WHERE key = :key`,
     parameters: [
       {
         name: 'key',
@@ -173,7 +173,7 @@ test('AuroraPostgresStore#find', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT key,item FROM users ORDER BY key`,
+    sql: `SELECT key,item FROM "users" ORDER BY key`,
     parameters: [],
   })
 })
@@ -202,7 +202,7 @@ test('AuroraPostgresStore#find with limit', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT key,item FROM users ORDER BY key LIMIT 3`,
+    sql: `SELECT key,item FROM "users" ORDER BY key LIMIT 3`,
     parameters: [],
   })
 })
@@ -230,7 +230,7 @@ test('AuroraPostgresStore#find with limit and cursor', async () => {
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
-    sql: `SELECT key,item FROM users WHERE key > :key ORDER BY key LIMIT 3`,
+    sql: `SELECT key,item FROM "users" WHERE key > :key ORDER BY key LIMIT 3`,
     parameters: [
       {
         name: 'key',

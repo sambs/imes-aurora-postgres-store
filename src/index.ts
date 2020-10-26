@@ -76,7 +76,7 @@ export class AuroraPostgresStore<I, Q extends Query>
   async get(key: string): Promise<I | undefined> {
     const result = await this.client
       .executeStatement({
-        sql: `SELECT item FROM ${this.table} WHERE key = :key`,
+        sql: `SELECT item FROM "${this.table}" WHERE key = :key`,
         parameters: [{ name: 'key', value: { stringValue: key } }],
         resourceArn: this.clusterArn,
         secretArn: this.secretArn,
@@ -112,7 +112,7 @@ export class AuroraPostgresStore<I, Q extends Query>
     await this.client
       .executeStatement({
         sql: `
-  INSERT INTO ${this.table} (${columns.map(name => `"${name}"`).join(', ')})
+  INSERT INTO "${this.table}" (${columns.map(name => `"${name}"`).join(', ')})
   VALUES(${values.join(', ')})
 `,
         parameters,
@@ -144,7 +144,7 @@ export class AuroraPostgresStore<I, Q extends Query>
       .executeStatement({
         // sql: '',
         sql: `
-  UPDATE ${this.table}
+  UPDATE "${this.table}"
   SET ${set.join(', ')}
   WHERE key = :key
 `,
@@ -158,7 +158,7 @@ export class AuroraPostgresStore<I, Q extends Query>
 
   async find(query: Q): Promise<QueryResult<I>> {
     const hasLimit = typeof query.limit == 'number'
-    let sql = `SELECT key,item FROM ${this.table}`
+    let sql = `SELECT key,item FROM "${this.table}"`
     let where: string[] = []
     let parameters: RDSDataService.SqlParametersList = []
 
@@ -231,7 +231,7 @@ export class AuroraPostgresStore<I, Q extends Query>
   async setup() {
     await this.client
       .executeStatement({
-        sql: `CREATE TABLE ${this.table} ("key" varchar(64) PRIMARY KEY, "item" jsonb)`,
+        sql: `CREATE TABLE "${this.table}" ("key" varchar(64) PRIMARY KEY, "item" jsonb)`,
         resourceArn: this.clusterArn,
         secretArn: this.secretArn,
         database: this.database,
@@ -242,7 +242,7 @@ export class AuroraPostgresStore<I, Q extends Query>
   async teardown() {
     await this.client
       .executeStatement({
-        sql: `DROP TABLE ${this.table}`,
+        sql: `DROP TABLE "${this.table}"`,
         resourceArn: this.clusterArn,
         secretArn: this.secretArn,
         database: this.database,
@@ -253,7 +253,7 @@ export class AuroraPostgresStore<I, Q extends Query>
   async clear() {
     await this.client
       .executeStatement({
-        sql: `DELETE FROM ${this.table}`,
+        sql: `DELETE FROM "${this.table}"`,
         resourceArn: this.clusterArn,
         secretArn: this.secretArn,
         database: this.database,
