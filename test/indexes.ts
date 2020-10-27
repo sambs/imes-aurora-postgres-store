@@ -45,10 +45,12 @@ const store = new AuroraPostgresStore<User, UserQuery>({
   getItemKey: ({ id }) => id,
   indexes: {
     name: {
+      dataType: 'varchar(128)',
       pick: user => user.name,
       value: auroraStringValue,
     },
     age: {
+      dataType: 'integer',
       pick: user => user.age,
       value: auroraNullable(auroraLongValue),
     },
@@ -361,5 +363,19 @@ test('AuroraPostgresStore#find with a gt filter', async () => {
         },
       },
     ],
+  })
+})
+
+test('AuroraPostgresStore#setup', async () => {
+  mockedRdsClient.executeStatement = jest.fn(() => ({
+    promise: jest.fn().mockResolvedValue({ records: [] }),
+  })) as any
+
+  await store.setup()
+
+  expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
+    ...commonQueryParams,
+    sql:
+      'CREATE TABLE "users" ("key" varchar(64) PRIMARY KEY, "item" jsonb, "name" varchar(128), "age" integer)',
   })
 })

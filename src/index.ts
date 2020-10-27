@@ -2,6 +2,7 @@ import * as RDSDataService from 'aws-sdk/clients/rdsdataservice'
 import { Query, QueryFilterField, QueryResult, Store } from 'imes'
 
 export type AuroraPostgresIndex<I, T> = {
+  dataType: string
   value: (value: T) => RDSDataService.Field
   typeHint?: RDSDataService.TypeHint
   pick: (item: I) => T
@@ -229,9 +230,15 @@ export class AuroraPostgresStore<I, Q extends Query>
   }
 
   async setup() {
+    const columns = ['"key" varchar(64) PRIMARY KEY', '"item" jsonb']
+
+    for (const name in this.indexes) {
+      columns.push(`"${name}" ${this.indexes[name].dataType}`)
+    }
+
     await this.client
       .executeStatement({
-        sql: `CREATE TABLE "${this.table}" ("key" varchar(64) PRIMARY KEY, "item" jsonb)`,
+        sql: `CREATE TABLE "${this.table}" (${columns.join(', ')})`,
         resourceArn: this.clusterArn,
         secretArn: this.secretArn,
         database: this.database,
