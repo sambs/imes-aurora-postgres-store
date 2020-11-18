@@ -43,8 +43,11 @@ export interface AuroraPostgresStoreOptions<I, Q extends Query> {
   filters: AuroraPostgresFilters<Q>
 }
 
-export class AuroraPostgresStore<I, Q extends Query>
-  implements Store<I, string, Q> {
+export class AuroraPostgresStore<I, Q extends Query> extends Store<
+  I,
+  string,
+  Q
+> {
   client: RDSDataService
   clusterArn: string
   database: string
@@ -64,6 +67,7 @@ export class AuroraPostgresStore<I, Q extends Query>
     indexes,
     filters,
   }: AuroraPostgresStoreOptions<I, Q>) {
+    super()
     this.client = client || new RDSDataService()
     this.clusterArn = clusterArn
     this.database = database
@@ -89,6 +93,34 @@ export class AuroraPostgresStore<I, Q extends Query>
       const json = result.records[0][0].stringValue
       if (json) return JSON.parse(json)
     }
+  }
+
+  async getMany(keys: Array<string>): Promise<Array<I | undefined>> {
+    const keyNames = keys.map((_key, index) => `:key${index}`).join(', ')
+
+    const result = await this.client
+      .executeStatement({
+        sql: `SELECT key,item FROM "${this.table}" WHERE key in (${keyNames})`,
+        parameters: keys.map((key, index) => ({
+          name: `key${index}`,
+          value: { stringValue: key },
+        })),
+        resourceArn: this.clusterArn,
+        secretArn: this.secretArn,
+        database: this.database,
+      })
+      .promise()
+
+    if (!result.records) return keys.map(() => undefined)
+
+    const lookup = result.records.reduce((lookup, [key, item]) => {
+      if (key?.stringValue && item?.stringValue) {
+        lookup[key.stringValue] = JSON.parse(item.stringValue)
+      }
+      return lookup
+    }, {} as { [key: string]: I })
+
+    return keys.map(key => lookup[key])
   }
 
   async create(item: I): Promise<void> {

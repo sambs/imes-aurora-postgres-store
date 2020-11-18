@@ -148,6 +148,41 @@ test('AuroraPostgresStore#get', async () => {
   expect(await store.get('dne')).toBeUndefined()
 })
 
+test('AuroraPostgresStore#getMany', async () => {
+  const executeStatementResponse: RDSDataService.ExecuteStatementResponse = {
+    records: [
+      [{ stringValue: 'u2' }, { stringValue: JSON.stringify(user2) }],
+      [{ stringValue: 'u1' }, { stringValue: JSON.stringify(user1) }],
+    ],
+  }
+
+  mockedRdsClient.executeStatement = jest.fn(() => ({
+    promise: jest.fn().mockResolvedValue(executeStatementResponse),
+  })) as any
+
+  expect(await store.getMany(['u1', 'u2', 'dne'])).toEqual([
+    user1,
+    user2,
+    undefined,
+  ])
+
+  expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
+    ...commonQueryParams,
+    sql: `SELECT key,item FROM "users" WHERE key in (:key0, :key1, :key2)`,
+    parameters: [
+      { name: 'key0', value: { stringValue: 'u1' } },
+      { name: 'key1', value: { stringValue: 'u2' } },
+      { name: 'key2', value: { stringValue: 'dne' } },
+    ],
+  })
+
+  mockedRdsClient.executeStatement = jest.fn(() => ({
+    promise: jest.fn().mockResolvedValue({ records: [] }),
+  })) as any
+
+  expect(await store.get('dne')).toBeUndefined()
+})
+
 test('AuroraPostgresStore#find', async () => {
   const executeStatementResponse: RDSDataService.ExecuteStatementResponse = {
     records: [
