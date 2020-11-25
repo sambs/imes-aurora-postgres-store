@@ -1901,10 +1901,10 @@ ieee754@1.1.13, ieee754@^1.1.4:
   resolved "https://registry.yarnpkg.com/ieee754/-/ieee754-1.1.13.tgz#ec168558e95aa181fd87d37f55c32bbcb6708b84"
   integrity sha512-4vf7I2LYV/HaWerSo3XmlMkp5eZ83i+/CDluXi/IGTs/O1sejBNhTtnxzmRZfvOUqj7lZjqHkeTvpgSFDlWZTg==
 
-imes@^0.16.0:
-  version "0.16.0"
-  resolved "https://registry.yarnpkg.com/imes/-/imes-0.16.0.tgz#08bb21d1f84300c99b0240923f70f2985c218a46"
-  integrity sha512-EaM5kxV8hns7gq1qupLLg2bekjvtXnjOvlez+QjIhPa5Xr2nxEwfq2KKHu2joxVN1hrtNtbdJqXg1QntN8pWDQ==
+imes@^0.17.0:
+  version "0.17.0"
+  resolved "https://registry.yarnpkg.com/imes/-/imes-0.17.0.tgz#08f98c53737e8042ef7e6a47ce04f009e08e214e"
+  integrity sha512-1U8pd8YSjlQ+1hRnfpPsUZ2pPTwxYVaO0laFhcXwAW2eLoOeit4DgpU8p1+EObgWaOjQn7uBzekf720HzCnH/Q==
   dependencies:
     deep-equal "^2.0.4"
     sort-keys "^4.1.0"

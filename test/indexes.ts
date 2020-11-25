@@ -86,18 +86,20 @@ const user3: User = {
   name: 'Eternal',
 }
 
-test('AuroraPostgresStore#create', async () => {
+test('AuroraPostgresStore#put', async () => {
   mockedRdsClient.executeStatement = jest.fn(() => ({
     promise: jest.fn().mockResolvedValue({ records: [] }),
   })) as any
 
-  await store.create(user1)
+  await store.put(user1)
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
     sql: `
   INSERT INTO "users" ("key", "item", "name", "age")
   VALUES(:key, :item::jsonb, :name, :age)
+  ON CONFLICT (key)
+  DO UPDATE SET item = Excluded.item, "name" = Excluded."name", "age" = Excluded."age"
 `,
     parameters: [
       {
@@ -122,18 +124,20 @@ test('AuroraPostgresStore#create', async () => {
   })
 })
 
-test('AuroraPostgresStore#create with a null value', async () => {
+test('AuroraPostgresStore#put with a null value', async () => {
   mockedRdsClient.executeStatement = jest.fn(() => ({
     promise: jest.fn().mockResolvedValue({ records: [] }),
   })) as any
 
-  await store.create(user3)
+  await store.put(user3)
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
     sql: `
   INSERT INTO "users" ("key", "item", "name", "age")
   VALUES(:key, :item::jsonb, :name, :age)
+  ON CONFLICT (key)
+  DO UPDATE SET item = Excluded.item, "name" = Excluded."name", "age" = Excluded."age"
 `,
     parameters: [
       {
@@ -157,49 +161,6 @@ test('AuroraPostgresStore#create with a null value', async () => {
         name: 'age',
         value: { isNull: true },
         typeHint: undefined,
-      },
-    ],
-  })
-})
-
-test('AuroraPostgresStore#update', async () => {
-  mockedRdsClient.executeStatement = jest.fn(() => ({
-    promise: jest.fn().mockResolvedValue({ records: [] }),
-  })) as any
-
-  await store.update(user1)
-
-  expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
-    ...commonQueryParams,
-    sql: `
-  UPDATE "users"
-  SET item = :item::jsonb, "name" = :name, "age" = :age
-  WHERE key = :key
-`,
-    parameters: [
-      {
-        name: 'key',
-        value: {
-          stringValue: 'u1',
-        },
-      },
-      {
-        name: 'item',
-        value: {
-          stringValue: JSON.stringify(user1),
-        },
-      },
-      {
-        name: 'name',
-        value: {
-          stringValue: 'Trevor',
-        },
-      },
-      {
-        name: 'age',
-        value: {
-          longValue: 47,
-        },
       },
     ],
   })

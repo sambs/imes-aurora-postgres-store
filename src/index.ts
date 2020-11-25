@@ -123,9 +123,10 @@ export class AuroraPostgresStore<I, Q extends Query> extends Store<
     return keys.map(key => lookup[key])
   }
 
-  async create(item: I): Promise<void> {
+  async put(item: I): Promise<void> {
     let columns = ['key', 'item']
     let values = [':key, :item::jsonb']
+    let set = ['item = Excluded.item']
     let parameters: RDSDataService.SqlParametersList = [
       { name: 'key', value: { stringValue: this.getItemKey(item) } },
       { name: 'item', value: { stringValue: JSON.stringify(item) } },
@@ -135,6 +136,7 @@ export class AuroraPostgresStore<I, Q extends Query> extends Store<
       const index = this.indexes[name]
       columns.push(name)
       values.push(`:${name}`)
+      set.push(`"${name}" = Excluded."${name}"`)
       parameters.push({
         name,
         value: index.value(index.pick(item)),
@@ -147,39 +149,8 @@ export class AuroraPostgresStore<I, Q extends Query> extends Store<
         sql: `
   INSERT INTO "${this.table}" (${columns.map(name => `"${name}"`).join(', ')})
   VALUES(${values.join(', ')})
-`,
-        parameters,
-        resourceArn: this.clusterArn,
-        secretArn: this.secretArn,
-        database: this.database,
-      })
-      .promise()
-  }
-
-  async update(item: I): Promise<void> {
-    let set = ['item = :item::jsonb']
-    let parameters: RDSDataService.SqlParametersList = [
-      { name: 'key', value: { stringValue: this.getItemKey(item) } },
-      { name: 'item', value: { stringValue: JSON.stringify(item) } },
-    ]
-
-    for (const name in this.indexes) {
-      const index = this.indexes[name]
-      set.push(`"${name}" = :${name}`)
-      parameters.push({
-        name,
-        value: index.value(index.pick(item)),
-        typeHint: index.typeHint,
-      })
-    }
-
-    await this.client
-      .executeStatement({
-        // sql: '',
-        sql: `
-  UPDATE "${this.table}"
-  SET ${set.join(', ')}
-  WHERE key = :key
+  ON CONFLICT (key)
+  DO UPDATE SET ${set.join(', ')}
 `,
         parameters,
         resourceArn: this.clusterArn,

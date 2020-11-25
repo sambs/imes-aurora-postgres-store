@@ -56,49 +56,20 @@ const user3: User = {
   name: 'Eternal',
 }
 
-test('AuroraPostgresStore#create', async () => {
+test('AuroraPostgresStore#put', async () => {
   mockedRdsClient.executeStatement = jest.fn(() => ({
     promise: jest.fn().mockResolvedValue({ records: [] }),
   })) as any
 
-  await store.create(user1)
+  await store.put(user1)
 
   expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
     ...commonQueryParams,
     sql: `
   INSERT INTO "users" ("key", "item")
   VALUES(:key, :item::jsonb)
-`,
-    parameters: [
-      {
-        name: 'key',
-        value: {
-          stringValue: 'u1',
-        },
-      },
-      {
-        name: 'item',
-        value: {
-          stringValue: JSON.stringify(user1),
-        },
-      },
-    ],
-  })
-})
-
-test('AuroraPostgresStore#update', async () => {
-  mockedRdsClient.executeStatement = jest.fn(() => ({
-    promise: jest.fn().mockResolvedValue({ records: [] }),
-  })) as any
-
-  await store.update(user1)
-
-  expect(mockedRdsClient.executeStatement).toHaveBeenCalledWith({
-    ...commonQueryParams,
-    sql: `
-  UPDATE "users"
-  SET item = :item::jsonb
-  WHERE key = :key
+  ON CONFLICT (key)
+  DO UPDATE SET item = Excluded.item
 `,
     parameters: [
       {
